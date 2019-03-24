@@ -1,16 +1,36 @@
 import React, { useState, useEffect } from 'react';
 import { fromEvent } from 'rxjs';
-import { map } from 'rxjs/operators';
+import { buffer, filter, map, share } from 'rxjs/operators';
 
 
 function App() {
   const [message, setMessage] = useState('');
   useEffect(() => {
-    const input$ = fromEvent(document.body, 'keypress');
-    input$.pipe(map(evt => evt.key));
-    const subscription = input$.subscribe(value => console.log(value));
+    const input$ = fromEvent(document.body, 'keypress')
+      .pipe(map(evt => evt.key))
+    
+    input$.pipe(share())
+    
+    const nonEnter$ = input$.pipe(
+      filter(key => key !== 'Enter')
+    )
+    const enter$ = input$.pipe(
+      filter(key => key === 'Enter')
+    )
 
-    return () => subscription.unsubscribe();
+    const submission$ = nonEnter$.pipe(
+      buffer(enter$),
+      map(buf => buf.join('')),
+    )
+
+    const subscriptions = [
+      input$.subscribe(value => console.log('value', value)),
+      nonEnter$.subscribe(value => console.log('nonEnter', value)),
+      enter$.subscribe(value => console.log('enter', value)),
+      submission$.subscribe(value => console.log('submission', value))
+    ]
+
+    return () => subscriptions.forEach(s => s.unsubscribe());
 
   }, [])
   return (

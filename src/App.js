@@ -7,10 +7,11 @@ function App() {
   const [message, setMessage] = useState('');
   useEffect(() => {
     const input$ = fromEvent(document.body, 'keypress')
-      .pipe(map(evt => evt.key))
-    
-    input$.pipe(share())
-    
+      .pipe(
+        map(evt => evt.key),
+        share(),
+      )
+        
     const nonEnter$ = input$.pipe(
       filter(key => key !== 'Enter')
     )
@@ -27,7 +28,7 @@ function App() {
       input$.subscribe(value => console.log('value', value)),
       nonEnter$.subscribe(value => console.log('nonEnter', value)),
       enter$.subscribe(value => console.log('enter', value)),
-      submission$.subscribe(value => console.log('submission', value))
+      submission$.subscribe(value => setMessage(value))
     ]
 
     return () => subscriptions.forEach(s => s.unsubscribe());
@@ -35,7 +36,7 @@ function App() {
   }, [])
   return (
     <div className="App">
-      Hello
+      {message}
     </div>
   );
 }

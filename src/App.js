@@ -1,37 +1,35 @@
 import React, { useState, useEffect } from 'react';
-import { fromEvent } from 'rxjs';
-import { buffer, filter, map, share } from 'rxjs/operators';
+import { fromEvent, interval, Subject } from 'rxjs';
+import { buffer, bufferToggle, filter, map, mapTo, scan, share, startWith, switchMap, repeatWhen } from 'rxjs/operators';
 
 
 function App() {
   const [message, setMessage] = useState('');
   useEffect(() => {
-    const input$ = fromEvent(document.body, 'keypress')
-      .pipe(
-        map(evt => evt.key),
-        share(),
-      )
-        
-    const nonEnter$ = input$.pipe(
-      filter(key => key !== 'Enter')
-    )
-    const enter$ = input$.pipe(
-      filter(key => key === 'Enter')
+    const input$ = fromEvent(document.body, 'keypress').pipe(
+      map(evt => evt.key),
+      share(),
+    )    
+    
+    // split off the Enter key presses into a separate stream
+    const nonEnter$ = input$.pipe(filter(key => key !== 'Enter'))
+    const enter$ = input$.pipe(filter(key => key === 'Enter'))
+
+    // reset is triggered after typing stops for 1 second
+    const resetInterval$ = interval(1000).pipe(mapTo(true));
+    const reset$ = input$.pipe(
+      startWith(true),
+      switchMap(() => resetInterval$)
     )
 
     const submission$ = nonEnter$.pipe(
-      buffer(enter$),
+      bufferToggle(reset$, () => enter$),
       map(buf => buf.join('')),
     )
 
-    const subscriptions = [
-      input$.subscribe(value => console.log('value', value)),
-      nonEnter$.subscribe(value => console.log('nonEnter', value)),
-      enter$.subscribe(value => console.log('enter', value)),
-      submission$.subscribe(value => setMessage(value))
-    ]
+    const subscription = submission$.subscribe(value => setMessage(value));
 
-    return () => subscriptions.forEach(s => s.unsubscribe());
+    return () => subscription.unsubscribe();
 
   }, [])
   return (
